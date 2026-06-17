@@ -16,10 +16,17 @@
   --color-accent-orange: #FF6D00;
   --color-accent-red: #D50000;
   --color-text-primary: #E8F5E9;
-  --color-text-muted: #78909C;
+  --color-text-muted: #94A3B8;
 
   --animate-spin-slow: spin 12s linear infinite;
   --animate-float-slow: float 6s ease-in-out infinite;
+}
+
+/* Ensure focus states are highly accessible and noticeable */
+:focus-visible {
+  outline: 2px solid #00C853 !important;
+  outline-offset: 2.5px !important;
+  box-shadow: 0 0 0 4px rgba(0, 200, 83, 0.45) !important;
 }
 
 @keyframes float {

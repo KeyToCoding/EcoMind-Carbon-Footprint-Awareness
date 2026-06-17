@@ -11,6 +11,15 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Strict HTTP Security Headers Middleware (Security Improvement)
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 // In-memory sessions store for habit tracking (keyed by a simple guestId or session ID)
 interface HabitSession {
   streak: number;
@@ -69,7 +78,7 @@ app.get("/health", (req, res) => {
 // 2. CALCULATE ENDPOINT - compute carbon breakdown from user questionnaire
 app.post("/api/calculate", (req, res) => {
   try {
-    const {
+    let {
       car_km = 0,
       car_type = "petrol",
       bus_km = 0,
@@ -85,19 +94,47 @@ app.post("/api/calculate", (req, res) => {
       recycling = "no"
     } = req.body;
 
+    // Strict Input Validation & Range Sanitization (Security improvement)
+    car_km = Math.max(0, Math.min(100000, Number(car_km) || 0));
+    bus_km = Math.max(0, Math.min(100000, Number(bus_km) || 0));
+    metro_km = Math.max(0, Math.min(100000, Number(metro_km) || 0));
+    auto_km = Math.max(0, Math.min(100000, Number(auto_km) || 0));
+    flights_year = Math.max(0, Math.min(1000, Number(flights_year) || 0));
+    electricity_kwh = Math.max(0, Math.min(100000, Number(electricity_kwh) || 0));
+    lpg_cylinders = Math.max(0, Math.min(1000, Number(lpg_cylinders) || 0));
+
+    if (typeof car_type !== "string" || !["petrol", "diesel"].includes(car_type)) {
+      car_type = "petrol";
+    }
+    if (typeof solar_panels !== "string" || !["yes", "no"].includes(solar_panels)) {
+      solar_panels = "no";
+    }
+    if (typeof diet_type !== "string" || !["vegan", "vegetarian", "omnivore", "heavy_meat"].includes(diet_type)) {
+      diet_type = "vegetarian";
+    }
+    if (typeof fast_fashion !== "string" || !["high", "medium", "low"].includes(fast_fashion)) {
+      fast_fashion = "medium";
+    }
+    if (typeof electronics_bought !== "string" || !["yes", "no"].includes(electronics_bought)) {
+      electronics_bought = "no";
+    }
+    if (typeof recycling !== "string" || !["yes", "no"].includes(recycling)) {
+      recycling = "no";
+    }
+
     // Standard weekly to monthly multiplier: 4.33
     const carFactor = car_type === "diesel" ? EMISSION_FACTORS.car_diesel : EMISSION_FACTORS.car_petrol;
-    const carCO2 = Number(car_km) * carFactor * 4.33;
-    const busCO2 = Number(bus_km) * EMISSION_FACTORS.bus * 4.33;
-    const metroCO2 = Number(metro_km) * EMISSION_FACTORS.metro * 4.33;
-    const autoCO2 = Number(auto_km) * EMISSION_FACTORS.auto * 4.33;
+    const carCO2 = car_km * carFactor * 4.33;
+    const busCO2 = bus_km * EMISSION_FACTORS.bus * 4.33;
+    const metroCO2 = metro_km * EMISSION_FACTORS.metro * 4.33;
+    const autoCO2 = auto_km * EMISSION_FACTORS.auto * 4.33;
     // Assume average domestic flight in India is 1000km
-    const flightCO2 = (Number(flights_year) * 1000 * EMISSION_FACTORS.flight) / 12;
+    const flightCO2 = (flights_year * 1000 * EMISSION_FACTORS.flight) / 12;
 
     const transportTotal = carCO2 + busCO2 + metroCO2 + autoCO2 + flightCO2;
 
-    const electricityCO2 = Number(electricity_kwh) * EMISSION_FACTORS.electricity;
-    const lpgCO2 = Number(lpg_cylinders) * EMISSION_FACTORS.lpg;
+    const electricityCO2 = electricity_kwh * EMISSION_FACTORS.electricity;
+    const lpgCO2 = lpg_cylinders * EMISSION_FACTORS.lpg;
     const solarOffset = solar_panels === "yes" ? EMISSION_FACTORS.solar_offset : 0;
 
     const energyTotal = Math.max(0, electricityCO2 + lpgCO2 + solarOffset);
@@ -309,9 +346,15 @@ function getFallbackInsights(total: number, breakdown: any) {
 // 4. LOG ACTION ENDPOINT - tracks green achievements and updates streaks
 app.post("/api/log-action", (req, res) => {
   try {
-    const { actionId, guestId } = req.body;
-    if (!actionId || !guestId) {
-      return res.status(400).json({ success: false, error: "Missing action ID or guest identifier." });
+    let { actionId, guestId } = req.body;
+    if (!actionId || !guestId || typeof actionId !== "string" || typeof guestId !== "string") {
+      return res.status(400).json({ success: false, error: "Missing or invalid action ID or guest identifier." });
+    }
+
+    // Sanitize guestId to prevent arbitrary key attacks/NoSQL injects in memory maps
+    guestId = guestId.replace(/[^a-zA-Z0-9_\-\.]/g, "");
+    if (!guestId) {
+      return res.status(400).json({ success: false, error: "Invalid guest identifier format." });
     }
 
     const session = getOrCreateSession(guestId);
