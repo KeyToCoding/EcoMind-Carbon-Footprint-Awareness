@@ -1,0 +1,8 @@
+{
+  "name": "EcoMind - Carbon Footprint Platform",
+  "description": "An interactive, visually stunning Carbon Footprint Awareness Platform with localized Indian parameters, dynamic visualizations, and expert AI recommendations powered by Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

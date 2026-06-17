@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-bg-dark: #0A1628;
+  --color-bg-card: #0F2027;
+  --color-green-primary: #00C853;
+  --color-green-soft: #69F0AE;
+  --color-green-dark: #1B5E20;
+  --color-accent-yellow: #FFD600;
+  --color-accent-orange: #FF6D00;
+  --color-accent-red: #D50000;
+  --color-text-primary: #E8F5E9;
+  --color-text-muted: #78909C;
+
+  --animate-spin-slow: spin 12s linear infinite;
+  --animate-float-slow: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(3deg); }
+}
+
+body {
+  background-color: #0A1628;
+  color: #E8F5E9;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom layout rules for glassmorphism and 3D card flips */
+.glass-panel {
+  background: rgba(15, 32, 39, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 200, 83, 0.2);
+  border-radius: 20px;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0A1628;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 200, 83, 0.2);
+  border-radius: 9999px;
+  border: 2px solid #0A1628;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(105, 240, 174, 0.4);
+}
+
+/* Premium Range Slider Custom Styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  height: 24px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(15, 32, 39, 0.9);
+  border: 1px solid rgba(0, 200, 83, 0.25);
+  height: 8px;
+  border-radius: 9999px;
+  transition: border-color 0.2s ease-in-out, background 0.2s ease-in-out;
+}
+
+input[type="range"]:focus::-webkit-slider-runnable-track {
+  border-color: rgba(105, 240, 174, 0.5);
+  background: rgba(15, 32, 23, 0.95);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #00C853;
+  border: 2px solid #69F0AE;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  margin-top: -6px; /* Balance centering with the standard track height */
+  box-shadow: 0 0 10px rgba(0, 200, 83, 0.4);
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background-color: #69F0AE;
+  box-shadow: 0 0 16px rgba(105, 240, 174, 0.8);
+}
+
+/* Mozilla Firefox Support */
+input[type="range"]::-moz-range-track {
+  background: rgba(15, 32, 39, 0.9);
+  border: 1px solid rgba(0, 200, 83, 0.25);
+  height: 8px;
+  border-radius: 9999px;
+}
+input[type="range"]::-moz-range-thumb {
+  background: #00C853;
+  border: 2px solid #69F0AE;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 200, 83, 0.4);
+  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.15s ease-in-out;
+}
+input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 16px rgba(105, 240, 174, 0.8);
+}
+
+.glow-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glow-hover:hover {
+  box-shadow: 0 0 25px rgba(0, 200, 83, 0.35);
+  transform: translateY(-2px);
+}
+
+/* 3D Flip Cards */
+.flip-card {
+  background-color: transparent;
+  perspective: 1000px;
+  height: 180px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.flip-card-front {
+  background: rgba(15, 32, 39, 0.9);
+  border: 1px solid rgba(0, 200, 83, 0.15);
+  color: #E8F5E9;
+}
+
+.flip-card-back {
+  background: linear-gradient(135deg, #0F2027 0%, #004d40 100%);
+  border: 1px solid rgba(105, 240, 174, 0.3);
+  color: #E8F5E9;
+  transform: rotateY(180deg);
+}
+
+/* Floating leaves/particles styling */
+.leaf-particle {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.6;
+  animation: particleFly 15s linear infinite;
+}
+
+@keyframes particleFly {
+  0% {
+    transform: translateY(105vh) translateX(0) scale(0.6) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-5vh) translateX(50px) scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}
