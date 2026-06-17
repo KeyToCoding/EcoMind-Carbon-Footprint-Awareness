@@ -25,6 +25,187 @@ function initializeApp() {
     { id: "reusable", emoji: "🥡", label: "Supported reusable meal containers", offset: 0.2 }
   ];
 
+  // --------------------------------------------------------
+  // LOCAL STORAGE & CALCULATIONS FALLBACK STORAGE ENGINE
+  // --------------------------------------------------------
+  const getLocalHabitState = () => {
+    try {
+      const saved = localStorage.getItem("ecomind_habit_state_v1");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {
+      streak: 0,
+      lastActiveDate: null as string | null,
+      totalSaved: 0,
+      completedActions: {} as Record<string, boolean>
+    };
+  };
+
+  const saveLocalHabitState = (state: any) => {
+    try {
+      localStorage.setItem("ecomind_habit_state_v1", JSON.stringify(state));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  function localLogEcoAction(actionId: string) {
+    const state = getLocalHabitState();
+    const action = PRESET_ACTIONS.find((act) => act.id === actionId);
+    if (!action) return state;
+
+    if (!state.completedActions[actionId]) {
+      state.completedActions[actionId] = true;
+      state.totalSaved = Number((state.totalSaved + action.offset).toFixed(1));
+
+      const todayString = new Date().toISOString().split("T")[0];
+      const lastActive = state.lastActiveDate;
+
+      if (!lastActive) {
+        state.streak = 1;
+      } else {
+        const lastDate = new Date(lastActive);
+        const todayDate = new Date(todayString);
+        const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          state.streak += 1;
+        } else if (diffDays > 1) {
+          state.streak = 1;
+        }
+      }
+      state.lastActiveDate = todayString;
+      saveLocalHabitState(state);
+    }
+    return state;
+  }
+
+  function localCalculate(formObj: any) {
+    const EMISSION_FACTORS = {
+      car_petrol: 0.21,
+      car_diesel: 0.17,
+      bus: 0.089,
+      metro: 0.041,
+      auto: 0.11,
+      flight: 0.255,
+      electricity: 0.82,
+      lpg: 39.6,
+      solar_offset: -15,
+      diet_vegan: 50,
+      diet_vegetarian: 80,
+      diet_omnivore: 130,
+      diet_heavy_meat: 200,
+      fashion_high: 80,
+      fashion_medium: 40,
+      fashion_low: 15,
+      electronics_yes: 30,
+      recycling_offset: -10
+    };
+
+    const car_km = Number(formObj.car_km) || 0;
+    const car_type = formObj.car_type || "petrol";
+    const bus_km = Number(formObj.bus_km) || 0;
+    const metro_km = Number(formObj.metro_km) || 0;
+    const auto_km = Number(formObj.auto_km) || 0;
+    const flights_year = Number(formObj.flights_year) || 0;
+    const electricity_kwh = Number(formObj.electricity_kwh) || 0;
+    const lpg_cylinders = Number(formObj.lpg_cylinders) || 0;
+    const solar_panels = formObj.solar_panels || "no";
+    const diet_type = formObj.diet_type || "vegetarian";
+    const fast_fashion = formObj.fast_fashion || "medium";
+    const electronics_bought = formObj.electronics_bought || "no";
+    const recycling = formObj.recycling || "no";
+
+    const carFactor = car_type === "diesel" ? EMISSION_FACTORS.car_diesel : EMISSION_FACTORS.car_petrol;
+    const carCO2 = car_km * carFactor * 4.33;
+    const busCO2 = bus_km * EMISSION_FACTORS.bus * 4.33;
+    const metroCO2 = metro_km * EMISSION_FACTORS.metro * 4.33;
+    const autoCO2 = auto_km * EMISSION_FACTORS.auto * 4.33;
+    const flightCO2 = (flights_year * 1000 * EMISSION_FACTORS.flight) / 12;
+
+    const transportTotal = carCO2 + busCO2 + metroCO2 + autoCO2 + flightCO2;
+
+    const electricityCO2 = electricity_kwh * EMISSION_FACTORS.electricity;
+    const lpgCO2 = lpg_cylinders * EMISSION_FACTORS.lpg;
+    const solarOffset = solar_panels === "yes" ? EMISSION_FACTORS.solar_offset : 0;
+
+    const energyTotal = Math.max(0, electricityCO2 + lpgCO2 + solarOffset);
+
+    let dietCO2 = EMISSION_FACTORS.diet_vegetarian;
+    if (diet_type === "vegan") dietCO2 = EMISSION_FACTORS.diet_vegan;
+    else if (diet_type === "omnivore") dietCO2 = EMISSION_FACTORS.diet_omnivore;
+    else if (diet_type === "heavy_meat") dietCO2 = EMISSION_FACTORS.diet_heavy_meat;
+
+    let fashionCO2 = EMISSION_FACTORS.fashion_medium;
+    if (fast_fashion === "high") fashionCO2 = EMISSION_FACTORS.fashion_high;
+    else if (fast_fashion === "low") fashionCO2 = EMISSION_FACTORS.fashion_low;
+
+    const electronicsCO2 = electronics_bought === "yes" ? EMISSION_FACTORS.electronics_yes : 0;
+    const recyclingOffset = recycling === "yes" ? EMISSION_FACTORS.recycling_offset : 0;
+
+    const lifestyleTotal = Math.max(0, fashionCO2 + electronicsCO2 + recyclingOffset);
+
+    const totalFootprint = transportTotal + energyTotal + dietCO2 + lifestyleTotal;
+
+    const earthsNeeded = Math.max(0.1, Number((totalFootprint / 150).toFixed(2)));
+    const earthDaysUsed = Math.round((totalFootprint / 400) * 365);
+
+    return {
+      success: true,
+      total: Number(totalFootprint.toFixed(2)),
+      breakdown: {
+        transport: Number(transportTotal.toFixed(2)),
+        energy: Number(energyTotal.toFixed(2)),
+        diet: Number(dietCO2.toFixed(2)),
+        lifestyle: Number(lifestyleTotal.toFixed(2))
+      },
+      earthsNeeded,
+      earthDaysUsed,
+      comparisons: {
+        parisTarget: 83,
+        averageIndian: 150,
+        globalAverage: 400
+      }
+    };
+  }
+
+  function localGetFallbackInsights(total: number, breakdown: any) {
+    let score = 90;
+    let grade = "A";
+
+    if (total > 350) {
+      score = 25;
+      grade = "D";
+    } else if (total > 200) {
+      score = 55;
+      grade = "C";
+    } else if (total > 100) {
+      score = 75;
+      grade = "B";
+    }
+
+    const fallbackTips = [
+      { icon: "🚶", title: "Walk or Bicycle", action: "Opt for walking, bicycling, or using localized cycle rickshaws for all travel distances under 3km.", impact: "15" },
+      { icon: "🥗", title: "Eat Local & Seasonal", action: "Decrease heavy dairy or meat consumption, preferring traditional seasonal crops, lentils, and local organic veggies.", impact: "25" },
+      { icon: "💡", title: "Smart Air Conditioning", action: "Maintain household cooling systems at a stable 24-26°C, swapping to efficient inverter tech.", impact: "18" },
+      { icon: "🚌", title: "Ride Metro/Trains", action: "Ditch local app cabs or single-passenger cars in favor of public transport grids during heavy office commute hours.", impact: "45" },
+      { icon: "🌱", title: "Rooftop Solar Connect", action: "Integrate standard passive solar water heating or grid solar modules to bypass electricity emission loads.", impact: "15" }
+    ];
+
+    return {
+      score,
+      grade,
+      tips: fallbackTips,
+      motivation: "Small changes multiplied by millions of people can truly heal our environment.",
+      comparison: `Your footprint of ${total.toFixed(1)} kg CO2e is ${total < 150 ? 'below' : 'above'} the average Indian limit (150 kg/mo).`,
+      weekly_challenge: "Switch off all standby electronics and walk/carpool at least twice this week.",
+      fun_fact: "India is one of the only major economies whose climate commitments align strongly with Paris agreement levels!"
+    };
+  }
+
   // DOM Elements - Stepper Navigation
   const stepPanes = document.querySelectorAll(".step-pane") as NodeListOf<HTMLElement>;
   const stepIndicator = document.getElementById("step-indicator") as HTMLElement;
@@ -451,14 +632,24 @@ function initializeApp() {
       btnNext.disabled = true;
       btnNext.textContent = "CALCULATING...";
 
-      const response = await fetch("/api/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formObj)
-      });
-      const data = await response.json();
+      let data;
+      try {
+        const response = await fetch("/api/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formObj)
+        });
+        const contentType = response.headers.get("content-type") || "";
+        if (!response.ok || !contentType.includes("application/json")) {
+          throw new Error("HTTP error " + response.status + " or unexpected content-type: " + contentType);
+        }
+        data = await response.json();
+      } catch (innerErr) {
+        console.warn("Backend API calculation offline, running client-side simulation:", innerErr);
+        data = localCalculate(formObj);
+      }
 
-      if (data.success) {
+      if (data && data.success) {
         activeTotalEmission = data.total;
         activeBreakdownSet = data.breakdown;
 
@@ -485,18 +676,31 @@ function initializeApp() {
     aiDataContainer.classList.add("hidden");
 
     try {
-      const response = await fetch("/api/ai-insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          total: totalVal,
-          breakdown: breakdownVal,
-          inputs: formInputs
-        })
-      });
-      const data = await response.json();
+      let data;
+      try {
+        const response = await fetch("/api/ai-insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            total: totalVal,
+            breakdown: breakdownVal,
+            inputs: formInputs
+          })
+        });
+        const contentType = response.headers.get("content-type") || "";
+        if (!response.ok || !contentType.includes("application/json")) {
+          throw new Error("HTTP error " + response.status + " or unexpected content-type: " + contentType);
+        }
+        data = await response.json();
+      } catch (innerErr) {
+        console.warn("AI Coach API offline, running client-side insights logic:", innerErr);
+        data = {
+          success: true,
+          insights: localGetFallbackInsights(totalVal, breakdownVal)
+        };
+      }
 
-      if (data.success && data.insights) {
+      if (data && data.success && data.insights) {
         const ins = data.insights;
         currentScoreGrade = ins.grade || "A";
 
@@ -552,9 +756,16 @@ function initializeApp() {
   // --------------------------------------------------------
   const habitsListGrid = document.getElementById("habits-list-grid");
 
-  function renderHabitsTracker(completedMap: Record<string, boolean> = {}) {
+  function renderHabitsTracker(completedMap: Record<string, boolean> = getLocalHabitState().completedActions) {
     if (!habitsListGrid) return;
     habitsListGrid.innerHTML = "";
+
+    // Sync streak and savings visual states initially
+    const localState = getLocalHabitState();
+    totalSavedIndicator.textContent = `🌱 ${localState.totalSaved.toFixed(1)} kg CO2 saved`;
+    streakHeaderStr.textContent = `🔥 ${localState.streak} Days`;
+    streakTextLabel.textContent = `${localState.streak} Day Streak!`;
+    updateStreakBadges(localState.streak);
 
     PRESET_ACTIONS.forEach((act) => {
       const isCompleted = completedMap[act.id] || false;
@@ -590,29 +801,40 @@ function initializeApp() {
   }
 
   async function logEcoActionToServer(actionId: string) {
+    // Optimistically update local client-side state
+    const localUpdated = localLogEcoAction(actionId);
+
     try {
       const response = await fetch("/api/log-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actionId, guestId })
       });
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok || !contentType.includes("application/json")) {
+        throw new Error("HTTP error " + response.status + " or unexpected content-type: " + contentType);
+      }
       const data = await response.json();
 
       if (data.success) {
-        // Sync local display values
+        // Sync to remote if exists, otherwise local already synced
         totalSavedIndicator.textContent = `🌱 ${data.totalSaved.toFixed(1)} kg CO2 saved`;
         streakHeaderStr.textContent = `🔥 ${data.streak} Days`;
         streakTextLabel.textContent = `${data.streak} Day Streak!`;
-
-        // Update badge opacities
         updateStreakBadges(data.streak);
-
-        // Re-render list with completed checked items
         renderHabitsTracker(data.completedActions);
+        return;
       }
     } catch (e) {
-      console.error("Habit tracking logging error:", e);
+      console.warn("Backend API log-action offline, using updated localStorage state:", e);
     }
+
+    // Fallback: update UI from local client state
+    totalSavedIndicator.textContent = `🌱 ${localUpdated.totalSaved.toFixed(1)} kg CO2 saved`;
+    streakHeaderStr.textContent = `🔥 ${localUpdated.streak} Days`;
+    streakTextLabel.textContent = `${localUpdated.streak} Day Streak!`;
+    updateStreakBadges(localUpdated.streak);
+    renderHabitsTracker(localUpdated.completedActions);
   }
 
   function updateStreakBadges(streak: number) {
