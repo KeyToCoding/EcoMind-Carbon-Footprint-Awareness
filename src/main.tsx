@@ -309,6 +309,8 @@ function initializeApp() {
   const certDays = document.getElementById("cert-days") as HTMLElement;
   const btnTwitter = document.getElementById("btn-share-twitter") as HTMLAnchorElement;
   const btnCopy = document.getElementById("btn-copy-link") as HTMLButtonElement;
+  const btnShareResults = document.getElementById("btn-share-results") as HTMLButtonElement;
+  const shareCopiedToast = document.getElementById("share-copied-toast") as HTMLElement;
 
   // Tracking State Values
   let currentStep = 1;
@@ -402,31 +404,45 @@ function initializeApp() {
   // INPUT RANGE SLIDERS DYNAMIC EVENT BINDINGS
   // --------------------------------------------------------
   carKm.addEventListener("input", (e) => {
-    carKmVal.textContent = `${(e.target as HTMLInputElement).value} km/week`;
+    const val = (e.target as HTMLInputElement).value;
+    carKmVal.textContent = `${val} km/week`;
+    carKm.setAttribute("aria-valuenow", val);
   });
 
   busKm.addEventListener("input", (e) => {
-    busKmVal.textContent = `${(e.target as HTMLInputElement).value} km/week`;
+    const val = (e.target as HTMLInputElement).value;
+    busKmVal.textContent = `${val} km/week`;
+    busKm.setAttribute("aria-valuenow", val);
   });
 
   metroKm.addEventListener("input", (e) => {
-    metroKmVal.textContent = `${(e.target as HTMLInputElement).value} km/week`;
+    const val = (e.target as HTMLInputElement).value;
+    metroKmVal.textContent = `${val} km/week`;
+    metroKm.setAttribute("aria-valuenow", val);
   });
 
   autoKm.addEventListener("input", (e) => {
-    autoKmVal.textContent = `${(e.target as HTMLInputElement).value} km/week`;
+    const val = (e.target as HTMLInputElement).value;
+    autoKmVal.textContent = `${val} km/week`;
+    autoKm.setAttribute("aria-valuenow", val);
   });
 
   flightsYear.addEventListener("input", (e) => {
-    flightsVal.textContent = `${(e.target as HTMLInputElement).value} flights/yr`;
+    const val = (e.target as HTMLInputElement).value;
+    flightsVal.textContent = `${val} flights/yr`;
+    flightsYear.setAttribute("aria-valuenow", val);
   });
 
   electricityKwh.addEventListener("input", (e) => {
-    electricityVal.textContent = `${(e.target as HTMLInputElement).value} kWh/month`;
+    const val = (e.target as HTMLInputElement).value;
+    electricityVal.textContent = `${val} kWh/month`;
+    electricityKwh.setAttribute("aria-valuenow", val);
   });
 
   lpgCylinders.addEventListener("input", (e) => {
-    lpgVal.textContent = `${(e.target as HTMLInputElement).value} cylinder/month`;
+    const val = (e.target as HTMLInputElement).value;
+    lpgVal.textContent = `${val} cylinder/month`;
+    lpgCylinders.setAttribute("aria-valuenow", val);
   });
 
   dietSlider.addEventListener("input", (e) => {
@@ -448,6 +464,7 @@ function initializeApp() {
     }
     dietLabel.textContent = label;
     dietTypeHidden.value = type;
+    dietSlider.setAttribute("aria-valuenow", String(val));
   });
 
   if (foodWasteInput) {
@@ -458,6 +475,7 @@ function initializeApp() {
       else if (val === 2) label = "Moderate Crop Waste 🗑️";
       else if (val === 3) label = "High Food Waste 🦖";
       wasteLabel.textContent = label;
+      foodWasteInput.setAttribute("aria-valuenow", String(val));
     });
   }
 
@@ -477,6 +495,7 @@ function initializeApp() {
     }
     fashionLabel.textContent = label;
     fashionTypeHidden.value = type;
+    fashionSlider.setAttribute("aria-valuenow", String(val));
   });
 
   // --------------------------------------------------------
@@ -489,6 +508,8 @@ function initializeApp() {
       btnYes.classList.replace("text-text-muted", "text-bg-dark");
       btnNo.classList.replace("bg-green-primary", "bg-bg-card");
       btnNo.classList.replace("text-bg-dark", "text-text-muted");
+      btnYes.setAttribute("aria-pressed", "true");
+      btnNo.setAttribute("aria-pressed", "false");
     });
 
     btnNo.addEventListener("click", () => {
@@ -497,6 +518,8 @@ function initializeApp() {
       btnNo.classList.replace("text-text-muted", "text-bg-dark");
       btnYes.classList.replace("bg-green-primary", "bg-bg-card");
       btnYes.classList.replace("text-bg-dark", "text-text-muted");
+      btnYes.setAttribute("aria-pressed", "false");
+      btnNo.setAttribute("aria-pressed", "true");
     });
   }
 
@@ -771,6 +794,8 @@ function initializeApp() {
       const isCompleted = completedMap[act.id] || false;
       const btn = document.createElement("button");
       btn.type = "button";
+      btn.setAttribute("aria-label", `Log custom action: ${act.label}`);
+      btn.setAttribute("aria-pressed", isCompleted ? "true" : "false");
       btn.className = `p-3.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
         isCompleted
           ? "bg-green-primary/10 border-green-primary/50 text-white"
@@ -785,7 +810,7 @@ function initializeApp() {
             <span class="text-[10px] text-green-soft font-mono mt-0.5">${act.offset > 0 ? "Defuses -" + act.offset + "kg CO₂" : "Impact Saved"}</span>
           </div>
         </div>
-        <span class="text-lg text-green-soft">${isCompleted ? "✅" : "➕"}</span>
+        <span class="text-lg text-green-soft" aria-hidden="true">${isCompleted ? "✅" : "➕"}</span>
       `;
 
       btn.addEventListener("click", async () => {
@@ -887,6 +912,35 @@ function initializeApp() {
       }, 2000);
     });
   });
+
+  if (btnShareResults) {
+    btnShareResults.addEventListener("click", () => {
+      certGrade.textContent = currentScoreGrade;
+      certTotal.textContent = `${activeTotalEmission.toFixed(1)} kg/mo`;
+      const days = Math.round((activeTotalEmission / 400) * 365);
+      certDays.textContent = `${days} Days`;
+      
+      const shareText = `I just calculated my localized carbon footprint on EcoMind! My monthly CO2 emissions are only ${activeTotalEmission.toFixed(1)} kg CO2e/month (My Grade: ${currentScoreGrade})! 🌱 Formulated with localized habit streaks and dynamic Gemini AI advice.\n\nCalculate yours, earn green streak trophy badges, and make a real difference in India's net-zero mission!\n#PromptWars #BuildWithAI #EcoMind #GoogleForDevelopers`;
+      
+      navigator.clipboard.writeText(shareText).then(() => {
+        if (shareCopiedToast) {
+          shareCopiedToast.textContent = "✅ COPIED PRE-FILLED POST!";
+          shareCopiedToast.classList.remove("text-text-muted");
+          shareCopiedToast.classList.add("text-green-soft", "font-bold");
+          setTimeout(() => {
+            shareCopiedToast.textContent = "Copy pre-written text";
+            shareCopiedToast.classList.remove("text-green-soft", "font-bold");
+            shareCopiedToast.classList.add("text-text-muted");
+          }, 3500);
+        }
+      });
+
+      // Also trigger same Twitter link setup and show download credentials
+      const textFormat = encodeURIComponent(`I scored a ${currentScoreGrade} on the EcoMind Carbon Footprint Platform! 🌍 Total emissions: ${activeTotalEmission.toFixed(1)} kg/mo. Join me in India's target to net-zero! #PromptWars #BuildWithAI #EcoMind`);
+      btnTwitter.href = `https://twitter.com/intent/tweet?text=${textFormat}`;
+      shareModal.classList.remove("hidden");
+    });
+  }
 
   // --------------------------------------------------------
   // INITIALIZATIONS

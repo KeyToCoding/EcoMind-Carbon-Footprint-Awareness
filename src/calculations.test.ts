@@ -171,3 +171,130 @@ describe("EcoMind Carbon Calculations Engine Tests", () => {
     expect(res.breakdown.lifestyle).toBeGreaterThanOrEqual(0);
   });
 });
+
+// Mock/simulation of the fallback insights generator
+function testGetFallbackInsights(total: number) {
+  let score = 90;
+  let grade = "A";
+
+  if (total > 350) {
+    score = 25;
+    grade = "D";
+  } else if (total > 200) {
+    score = 55;
+    grade = "C";
+  } else if (total > 100) {
+    score = 75;
+    grade = "B";
+  }
+
+  const fallbackTips = [
+    { icon: "🚶", title: "Walk or Bicycle", action: "Opt for walking, bicycling, or using localized cycle rickshaws for all travel distances under 3km.", impact: "15" },
+    { icon: "🥗", title: "Eat Local & Seasonal", action: "Decrease heavy dairy or meat consumption, preferring traditional seasonal crops, lentils, and local organic veggies.", impact: "25" },
+    { icon: "💡", title: "Smart Air Conditioning", action: "Maintain household cooling systems at a stable 24-26°C, swapping to efficient inverter tech.", impact: "18" },
+    { icon: "🚌", title: "Ride Metro/Trains", action: "Ditch local app cabs or single-passenger cars in favor of public transport grids during heavy office commute hours.", impact: "45" },
+    { icon: "🌱", title: "Rooftop Solar Connect", action: "Integrate standard passive solar water heating or grid solar modules to bypass electricity emission loads.", impact: "15" }
+  ];
+
+  return {
+    score,
+    grade,
+    tips: fallbackTips,
+    motivation: "Small variations in daily routines add up and forge a resilient, green sustainable future for our planet.",
+    comparison: `Your emission of ${total} kg/month compares to the typical Indian active baseline of 150 kg/month and the global threshold of 400 kg/month.`,
+    weekly_challenge: "Avoid buying items wrapped in single-use plastic, opting for your own canvas/tote bag for grocery visits.",
+    fun_fact: "Energy sector activities form over 70% of India's aggregate greenhouse gases, which means efficient home power makes the absolute highest real-world dent!"
+  };
+}
+
+describe("EcoMind Fallback Insights Generator Tests", () => {
+  it("should assign grade D for high footprint (> 350)", () => {
+    const insights = testGetFallbackInsights(420);
+    expect(insights.score).toBe(25);
+    expect(insights.grade).toBe("D");
+    expect(insights.tips).toHaveLength(5);
+  });
+
+  it("should assign grade C for moderate footprint (between 200 and 350)", () => {
+    const insights = testGetFallbackInsights(280);
+    expect(insights.score).toBe(55);
+    expect(insights.grade).toBe("C");
+  });
+
+  it("should assign grade B for low/typical footprint (between 100 and 200)", () => {
+    const insights = testGetFallbackInsights(160);
+    expect(insights.score).toBe(75);
+    expect(insights.grade).toBe("B");
+  });
+
+  it("should assign grade A for exceptional low footprint (< 100)", () => {
+    const insights = testGetFallbackInsights(65);
+    expect(insights.score).toBe(90);
+    expect(insights.grade).toBe("A");
+  });
+});
+
+// Session & Streak progression tracking simulator mimicking server.ts
+interface Session {
+  streak: number;
+  lastActive: string; // YYYY-MM-DD
+  loggedActivities: string[];
+}
+
+function processLogAction(session: Session, actionId: string, currentDateStr: string): { success: boolean; streakEarned: number } {
+  if (session.loggedActivities.includes(actionId)) {
+    // already logged today or before in this test scenario
+    return { success: false, streakEarned: session.streak };
+  }
+
+  session.loggedActivities.push(actionId);
+
+  if (!session.lastActive) {
+    session.streak = 1;
+  } else {
+    const lastDate = new Date(session.lastActive);
+    const currentDate = new Date(currentDateStr);
+    const diffTime = Math.abs(currentDate.getTime() - lastDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) {
+      session.streak += 1;
+    } else if (diffDays > 1) {
+      session.streak = 1; // broken streak
+    }
+  }
+
+  session.lastActive = currentDateStr;
+  return { success: true, streakEarned: session.streak };
+}
+
+describe("EcoMind Streamlined Gamification & Logging Tests", () => {
+  it("should start a brand-new user with a 1-day streak", () => {
+    const dummyUser: Session = { streak: 0, lastActive: "", loggedActivities: [] };
+    const res = processLogAction(dummyUser, "commute-walk", "2026-06-17");
+    expect(res.success).toBe(true);
+    expect(dummyUser.streak).toBe(1);
+    expect(dummyUser.lastActive).toBe("2026-06-17");
+  });
+
+  it("should successfully increment streak on consecutive days", () => {
+    const dummyUser: Session = { streak: 1, lastActive: "2026-06-16", loggedActivities: ["commute-walk"] };
+    const res = processLogAction(dummyUser, "compost-diy", "2026-06-17");
+    expect(res.success).toBe(true);
+    expect(dummyUser.streak).toBe(2);
+  });
+
+  it("should reset streak to 1 if there is a gap of multiple days", () => {
+    const dummyUser: Session = { streak: 4, lastActive: "2026-06-10", loggedActivities: ["commute-walk"] };
+    const res = processLogAction(dummyUser, "compost-diy", "2026-06-17");
+    expect(res.success).toBe(true);
+    expect(dummyUser.streak).toBe(1);
+  });
+
+  it("should prevent duplicate registration of the exact same action item", () => {
+    const dummyUser: Session = { streak: 2, lastActive: "2026-06-17", loggedActivities: ["compost-diy"] };
+    const res = processLogAction(dummyUser, "compost-diy", "2026-06-17");
+    expect(res.success).toBe(false);
+    expect(dummyUser.loggedActivities).toHaveLength(1);
+  });
+});

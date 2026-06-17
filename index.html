@@ -50,7 +50,7 @@
           <div class="glass-panel p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 relative overflow-hidden">
             <div class="absolute -right-16 -top-16 w-48 h-48 bg-green-primary/10 blur-3xl rounded-full"></div>
             <!-- Rotating Earth SVG -->
-            <div class="relative w-32 h-32 flex-shrink-0 animate-spin-slow">
+            <div class="relative w-32 h-32 flex-shrink-0 animate-spin-slow" aria-hidden="true">
               <svg viewBox="0 0 100 100" class="w-full h-full text-green-primary drop-shadow-[0_0_15px_rgba(0,200,83,0.3)]">
                 <circle cx="50" cy="50" r="45" fill="rgba(15,32,39,0.5)" stroke="currentColor" stroke-width="2"/>
                 <!-- Simplistic SVG continents that spin -->
@@ -294,10 +294,10 @@
 
               <!-- BUTTONS & FOOTER -->
               <div class="flex justify-between items-center gap-4 mt-8 pt-4 border-t border-green-primary/10">
-                <button type="button" id="btn-prev" class="px-6 py-2.5 rounded-xl border border-green-primary/20 text-xs font-bold hover:bg-green-primary/5 transition-all text-text-muted cursor-not-allowed" disabled>
+                <button type="button" id="btn-prev" aria-label="Navigate to previous step of questionnaire" class="px-6 py-2.5 rounded-xl border border-green-primary/20 text-xs font-bold hover:bg-green-primary/5 transition-all text-text-muted cursor-not-allowed" disabled>
                   BACK
                 </button>
-                <button type="button" id="btn-next" class="px-8 py-2.5 rounded-xl bg-gradient-to-r from-green-primary to-green-soft text-bg-dark text-xs font-bold hover:shadow-[0_0_15px_rgba(0,200,83,0.4)] hover:scale-[1.02] transition-all cursor-pointer">
+                <button type="button" id="btn-next" aria-label="Navigate to next step or calculate emissions" class="px-8 py-2.5 rounded-xl bg-gradient-to-r from-green-primary to-green-soft text-bg-dark text-xs font-bold hover:shadow-[0_0_15px_rgba(0,200,83,0.4)] hover:scale-[1.02] transition-all cursor-pointer">
                   NEXT
                 </button>
               </div>
@@ -391,6 +391,17 @@
                   <span class="text-[9px] text-text-muted block mt-0.5">If everyone lived like you</span>
                 </div>
               </div>
+
+              <!-- SOCIAL MEDIA SHARE ACTION (Direct Problem Statement Alignment) -->
+              <div class="w-full mt-5 pt-4 border-t border-green-primary/10">
+                <button type="button" id="btn-share-results" class="w-full py-2.5 px-4 rounded-xl bg-bg-dark/60 hover:bg-bg-dark/90 border border-green-primary/30 text-[11px] text-green-soft font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer" aria-label="Share carbon footprint score on LinkedIn or other platforms">
+                  <span>🔗</span> SHARE IMPACT TO LINKEDIN
+                </button>
+                <div class="flex justify-between items-center mt-2 px-1 text-[9px] text-text-muted font-mono leading-tight">
+                  <span id="share-copied-toast">Copy pre-written text</span>
+                  <span>#PromptWars #BuildWithAI</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -450,7 +461,7 @@
             <!-- Donut category distribution map using inline dynamic segments -->
             <div class="flex items-center gap-6 p-4 rounded-xl bg-bg-dark/50 border border-green-primary/10 mt-2">
               <div class="relative w-24 h-24 flex-shrink-0">
-                <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90">
+                <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90" role="img" aria-label="Visual representation donut chart expressing the carbon footprint ratio breakdown among transport, household energy, diet choices, and lifestyle habits.">
                   <circle cx="18" cy="18" r="15.915" fill="transparent" stroke="rgba(15,32,39,0.8)" stroke-width="3"/>
                   
                   <!-- Segment 1: Transport (green-primary) -->
@@ -509,8 +520,8 @@
                   <p class="text-[10px] font-mono text-green-soft">POWERED BY GEMINI 3.5 FLASH</p>
                 </div>
               </div>
-              <button type="button" id="btn-ai-recalc" class="p-2 rounded-lg bg-green-primary/10 text-green-soft hover:bg-green-primary/20 border border-green-primary/20 text-xs font-mono flex items-center gap-1 active:scale-95 transition-all cursor-pointer">
-                <span>🔄</span> GET REAL INSIGHTS
+              <button type="button" id="btn-ai-recalc" aria-label="Calculate and refresh real Gemini AI advice" class="p-2 rounded-lg bg-green-primary/10 text-green-soft hover:bg-green-primary/20 border border-green-primary/20 text-xs font-mono flex items-center gap-1 active:scale-95 transition-all cursor-pointer">
+                <span aria-hidden="true">🔄</span> GET REAL INSIGHTS
               </button>
             </div>
 

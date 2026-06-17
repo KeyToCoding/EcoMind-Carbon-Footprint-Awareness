@@ -20,6 +20,38 @@ app.use((req, res, next) => {
   next();
 });
 
+// Lightweight IP Rate Limiter to prevent endpoint abuse (Security Improvement)
+interface RateLimit {
+  count: number;
+  resetTime: number;
+}
+const apiRateLimits = new Map<string, RateLimit>();
+
+const apiRateLimiter = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const ip = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "anonymous";
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  const maxLimit = 120; // 120 requests maximum per window
+  
+  let userLimit = apiRateLimits.get(ip);
+  if (!userLimit || now > userLimit.resetTime) {
+    userLimit = { count: 0, resetTime: now + windowMs };
+  }
+  
+  userLimit.count++;
+  apiRateLimits.set(ip, userLimit);
+  
+  if (userLimit.count > maxLimit) {
+    return res.status(429).json({
+      success: false,
+      error: "Too many requests from this IP. Please slow down and try again later."
+    });
+  }
+  next();
+};
+
+app.use("/api", apiRateLimiter);
+
 // In-memory sessions store for habit tracking (keyed by a simple guestId or session ID)
 interface HabitSession {
   streak: number;
@@ -188,18 +220,44 @@ app.post("/api/calculate", (req, res) => {
 // 3. AI INSIGHTS ENDPOINT - using Google Gemini AI
 app.post("/api/ai-insights", async (req, res) => {
   try {
-    const { total, breakdown, inputs } = req.body;
+    let { total, breakdown, inputs } = req.body;
 
-    if (!total) {
+    if (total === undefined || total === null) {
       return res.status(400).json({ success: false, error: "Missing footprint calculation dataset." });
     }
+
+    // Strict Input Validation & Range Sanitization (Security improvement)
+    const sanitizedTotal = Math.max(0, Math.min(1000000, Number(total) || 150));
+    
+    const sanitizedBreakdown = {
+      transport: Math.max(0, Math.min(1000000, Number(breakdown?.transport) || 0)),
+      energy: Math.max(0, Math.min(1000000, Number(breakdown?.energy) || 0)),
+      diet: Math.max(0, Math.min(1000000, Number(breakdown?.diet) || 0)),
+      lifestyle: Math.max(0, Math.min(1000000, Number(breakdown?.lifestyle) || 0))
+    };
+
+    const sanitizedInputs = {
+      car_km: Math.max(0, Math.min(100000, Number(inputs?.car_km) || 0)),
+      car_type: String(inputs?.car_type || "petrol").replace(/[^a-z]/gi, ""),
+      bus_km: Math.max(0, Math.min(100000, Number(inputs?.bus_km) || 0)),
+      metro_km: Math.max(0, Math.min(100000, Number(inputs?.metro_km) || 0)),
+      auto_km: Math.max(0, Math.min(100000, Number(inputs?.auto_km) || 0)),
+      flights_year: Math.max(0, Math.min(1000, Number(inputs?.flights_year) || 0)),
+      electricity_kwh: Math.max(0, Math.min(100000, Number(inputs?.electricity_kwh) || 0)),
+      lpg_cylinders: Math.max(0, Math.min(1000, Number(inputs?.lpg_cylinders) || 0)),
+      solar_panels: String(inputs?.solar_panels || "no").replace(/[^a-z]/gi, ""),
+      diet_type: String(inputs?.diet_type || "vegetarian").replace(/[^a-z_]/gi, ""),
+      fast_fashion: String(inputs?.fast_fashion || "medium").replace(/[^a-z_]/gi, ""),
+      electronics_bought: String(inputs?.electronics_bought || "no").replace(/[^a-z]/gi, ""),
+      recycling: String(inputs?.recycling || "no").replace(/[^a-z]/gi, "")
+    };
 
     if (!process.env.GEMINI_API_KEY) {
       console.warn("GEMINI_API_KEY is not defined. Using high-fidelity fallbacks.");
       return res.json({
         success: true,
         source: "fallback",
-        insights: getFallbackInsights(total, breakdown)
+        insights: getFallbackInsights(sanitizedTotal, sanitizedBreakdown)
       });
     }
 
@@ -214,26 +272,26 @@ app.post("/api/ai-insights", async (req, res) => {
     });
 
     const userFactSummary = `
-      User calculated footprint: ${total} kg CO2e/month.
+      User calculated footprint: ${sanitizedTotal} kg CO2e/month.
       Breakdown:
-      - Transport: ${breakdown?.transport || 0} kg CO2e/month
-      - Home Energy: ${breakdown?.energy || 0} kg CO2e/month
-      - Diet: ${breakdown?.diet || 0} kg CO2e/month
-      - Shopping/Habits: ${breakdown?.lifestyle || 0} kg CO2e/month
+      - Transport: ${sanitizedBreakdown.transport} kg CO2e/month
+      - Home Energy: ${sanitizedBreakdown.energy} kg CO2e/month
+      - Diet: ${sanitizedBreakdown.diet} kg CO2e/month
+      - Shopping/Habits: ${sanitizedBreakdown.lifestyle} kg CO2e/month
 
       Detailed inputs:
-      - Car distance: ${inputs?.car_km || 0} km/week (${inputs?.car_type || "petrol"})
-      - Bus commuting: ${inputs?.bus_km || 0} km/week
-      - Metro/Train commuting: ${inputs?.metro_km || 0} km/week
-      - Auto commuting: ${inputs?.auto_km || 0} km/week
-      - Annual domestic flights count: ${inputs?.flights_year || 0}
-      - Energy grid power: ${inputs?.electricity_kwh || 0} kWh
-      - Home LPG consumption: ${inputs?.lpg_cylinders || 0} cylinders/month
-      - Solar offsets applied: ${inputs?.solar_panels || "no"}
-      - Diet approach: ${inputs?.diet_type || "vegetarian"}
-      - Fast fashion shopping: ${inputs?.fast_fashion || "medium"}
-      - Electronics purchase frequency: ${inputs?.electronics_bought || "no"}
-      - Recycling commitment: ${inputs?.recycling || "no"}
+      - Car distance: ${sanitizedInputs.car_km} km/week (${sanitizedInputs.car_type})
+      - Bus commuting: ${sanitizedInputs.bus_km} km/week
+      - Metro/Train commuting: ${sanitizedInputs.metro_km} km/week
+      - Auto commuting: ${sanitizedInputs.auto_km} km/week
+      - Annual domestic flights count: ${sanitizedInputs.flights_year}
+      - Energy grid power: ${sanitizedInputs.electricity_kwh} kWh
+      - Home LPG consumption: ${sanitizedInputs.lpg_cylinders} cylinders/month
+      - Solar offsets applied: ${sanitizedInputs.solar_panels}
+      - Diet approach: ${sanitizedInputs.diet_type}
+      - Fast fashion shopping: ${sanitizedInputs.fast_fashion}
+      - Electronics purchase frequency: ${sanitizedInputs.electronics_bought}
+      - Recycling commitment: ${sanitizedInputs.recycling}
     `;
 
     const systemInstruction = `You are EcoMind, an expert sustainability coach for Indian citizens. 
